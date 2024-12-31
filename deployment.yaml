@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app  # Называем наше приложение "web-app"
+spec:
+  replicas: 4  # Запускаем 4 копии приложения (пода), чтобы справляться с нагрузкой
+  strategy:
+    type: RollingUpdate  # Обновляем приложение постепенно, чтобы не было простоев
+    rollingUpdate:
+      maxUnavailable: 1  # Максимум один под может быть недоступен во время обновления
+      maxSurge: 1  # Максимум один дополнительный под может быть создан во время обновления
+  selector:
+    matchLabels:
+      app: web-app  # Указываем, что управляем подами с меткой "app: web-app"
+  template:
+    metadata:
+      labels:
+        app: web-app  # Каждый под будет иметь метку "app: web-app"
+    spec:
+      affinity:
+        podAntiAffinity:  # Распределяем поды по разным нодам, чтобы повысить надежность
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - web-app
+              topologyKey: "kubernetes.io/hostname"
+        nodeAffinity:  # Распределяем поды по трем зонам для отказоустойчивости
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - zone-a
+                      - zone-b
+                      - zone-c
+      containers:
+        - name: web-app  # Называем контейнер "web-app"
+          image: your-web-app-image:latest  # Указываем образ приложения
+          ports:
+            - containerPort: 80  # Приложение работает на порту 80
+          resources:
+            requests:
+              cpu: "0.1"  # Минимальное количество CPU, которое нужно приложению
+              memory: "128Mi"  # Минимальное количество памяти
+            limits:
+              cpu: "0.5"  # Максимальное количество CPU, которое может использовать приложение
+              memory: "128Mi"  # Максимальное количество памяти
+          readinessProbe:  # Проверка, готово ли приложение принимать запросы
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10  # Ждем 10 секунд перед первой проверкой
+            periodSeconds: 5  # Проверяем каждые 5 секунд
+          livenessProbe:  # Проверка, работает ли приложение
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 15  # Ждем 15 секунд перед первой проверкой
+            periodSeconds: 10  # Проверяем каждые 10 секунд

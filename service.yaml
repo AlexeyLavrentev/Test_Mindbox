@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app-service  # Называем сервис "web-app-service"
+spec:
+  type: ClusterIP  # Используем ClusterIP для внутреннего доступа
+  selector:
+    app: web-app  # Указываем, что сервис управляет подами с меткой "app: web-app"
+  ports:
+    - protocol: TCP
+      port: 80  # Сервис слушает на порту 80
+      targetPort: 80  # Перенаправляет запросы на порт 80 пода
